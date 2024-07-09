@@ -1,0 +1,101 @@
+diff --git a/Makefile b/Makefile
+index 3edbfd76..4c1f0679 100644
+--- a/Makefile
++++ b/Makefile
+@@ -43,8 +43,7 @@ package_gerrit_skiplist: package_dir_structure
+ 
+ package: package_dir_structure set_git_commit_template package_gerrit_skiplist
+ 	BUILD_DIR=$(BUILD_DIR) BUILD_LOGGER_64_BIT_ONLY=$(BUILD_LOGGER_64_BIT_ONLY) $(MAKE) -C $(CC_ANALYZER) package_analyzer
+-	BUILD_DIR=$(BUILD_DIR) $(MAKE) -C $(CC_WEB) package_web
+-
++	
+ 	# Copy libraries.
+ 	mkdir -p $(CC_BUILD_LIB_DIR)/codechecker && \
+ 	cp -r $(ROOT)/codechecker_common $(CC_BUILD_LIB_DIR) && \
+diff --git a/bin/CodeChecker b/bin/CodeChecker
+index ad820b8a..7f67d638 100755
+--- a/bin/CodeChecker
++++ b/bin/CodeChecker
+@@ -39,7 +39,7 @@ def run_codechecker(checker_env, subcommand=None):
+     package_root = os.path.dirname(package_bin)
+     lib_dir_path = os.path.join(package_root, 'lib', 'python3')
+ 
+-    checker_env['PYTHONPATH'] = lib_dir_path
++    checker_env['PYTHONPATH'] = os.environ.get('PYTHONPATH') + ':' + lib_dir_path
+     checker_env['CC_BIN_DIR'] = package_bin
+ 
+     python3 = os.path.join('python3')
+diff --git a/setup.py b/setup.py
+index 1d96dcc4..1edc9e34 100644
+--- a/setup.py
++++ b/setup.py
+@@ -15,9 +15,7 @@ curr_dir = os.path.dirname(os.path.realpath(__file__))
+ build_dir = os.path.join(curr_dir, "build_dist")
+ package_dir = os.path.join("build_dist", "CodeChecker")
+ lib_dir = os.path.join(package_dir, "lib", "python3")
+-req_file_paths = [
+-    os.path.join("analyzer", "requirements.txt"),
+-    os.path.join("web", "requirements.txt")]
++req_file_paths = [os.path.join("analyzer", "requirements.txt")]
+ data_files_dir_path = os.path.join('share', 'codechecker')
+ 
+ data_files = [
+@@ -45,9 +43,11 @@ def get_requirements():
+ 
+ def init_data_files():
+     """ Initalize data files which will be copied into the package. """
+-    for data_dir_name in ['config', 'www']:
++    for data_dir_name in ['config']:
+         data_dir_path = os.path.join(package_dir, data_dir_name)
++        print(data_dir_path)
+         for root, _, files in os.walk(data_dir_path):
++            print(files)
+             if not files:
+                 continue
+ 
+@@ -112,8 +112,9 @@ class BuildExt(build_ext):
+ 
+ class Sdist(sdist):
+     def run(self):
++        print('run SDIST')
+         res = subprocess.call(
+-            ["make", "clean_package", "package", "package_api"],
++            ["make", "clean_package", "package"],
+             env=dict(os.environ,
+                      BUILD_DIR=build_dir),
+             encoding="utf-8",
+@@ -130,6 +131,7 @@ class Sdist(sdist):
+ 
+ class Install(install):
+     def run(self):
++        print('run Install')
+         init_data_files()
+         init_packages()
+ 
+@@ -140,6 +142,8 @@ with open(os.path.join("docs", "README.md"), "r",
+     long_description = fh.read()
+ 
+ 
++print(data_files)
++
+ setuptools.setup(
+     name="codechecker",
+     version="6.25.0",
+@@ -156,16 +160,15 @@ setuptools.setup(
+     },
+     keywords=['codechecker', 'plist'],
+     license='Apache-2.0 WITH LLVM-exception',
+-    packages=packages,
+     package_dir={
+         "": lib_dir
+     },
++    packages=packages,
+     data_files=data_files,
+     include_package_data=True,
+     classifiers=[
+         "Development Status :: 5 - Production/Stable",
+         "Environment :: Console",
+-        "Environment :: Web Environment",
+         "Intended Audience :: Developers",
+         "License :: OSI Approved :: Apache Software License",
+         "Operating System :: MacOS",
